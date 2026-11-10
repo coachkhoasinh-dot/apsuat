@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thí Nghiệm Khảo Sát Áp Suất Chất Lỏng - KHTN 8</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        /* Nhãn nổi 3D A, B, C */
+        .label-3d {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: auto;
+            cursor: pointer;
+            transition: transform 0.15s ease, background-color 0.15s;
+            z-index: 20;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .label-3d:hover {
+            transform: translate(-50%, -50%) scale(1.15);
+        }
+        .label-3d.active-membrane {
+            outline: 3px solid #b91c1c;
+            outline-offset: 2px;
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+        /* Thanh trượt độ sâu rõ ràng, dễ kéo */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 12px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 26px;
+            width: 26px;
+            border-radius: 50%;
+            background: #c81e1e;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            border: 3px solid #ffffff;
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.12);
+            background: #991b1b;
+        }
+        /* Thanh cuộn gọn gàng */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .panel-box {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col bg-white text-slate-800">
+
+    <!-- HEADER TIÊU ĐỀ BÀI HỌC (TÔNG ĐỎ - TRẮNG TRUYỀN THỐNG) -->
+    <header class="h-14 bg-[#b91c1c] text-white px-4 lg:px-6 flex items-center justify-between shrink-0 z-30 shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded bg-white text-[#b91c1c] flex items-center justify-center font-bold text-lg shadow-sm">
+                <i class="fa-solid fa-flask"></i>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <span class="text-xs font-bold uppercase px-2 py-0.5 rounded bg-white text-[#b91c1c]">KHTN 8</span>
+                <h1 class="text-base lg:text-xl font-bold tracking-normal text-white">THÍ NGHIỆM KHẢO SÁT ÁP SUẤT CHẤT LỎNG</h1>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+            <button id="btn-guide" class="px-3.5 py-1.5 rounded bg-red-800 hover:bg-red-900 border border-red-400 text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 transition cursor-pointer">
+                <i class="fa-solid fa-circle-question"></i>
+                <span class="hidden sm:inline">Hướng dẫn</span>
+            </button>
+            <button id="btn-quiz" class="px-4 py-1.5 rounded bg-white hover:bg-red-50 text-[#b91c1c] font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition cursor-pointer">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>Câu hỏi & Kết luận</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+        <!-- KHU VỰC 3D VIEWPORT (BÊN TRÁI) -->
+        <div class="flex-1 relative h-full overflow-hidden bg-slate-100" id="viewport-wrapper">
+            <div id="canvas-container"></div>
+
+            <!-- NHÃN 3D A, B, C GẮN TRỰC TIẾP LÊN MÀNG CAO SU -->
+            <div id="label-A" class="label-3d bg-[#c81e1e] hover:bg-red-800 text-white font-bold text-base w-9 h-9 rounded-full flex items-center justify-center border-2 border-white shadow-md" title="Nhấn để xem thông tin màng A">
+                A
+            </div>
+            <div id="label-B" class="label-3d bg-[#c81e1e] hover:bg-red-800 text-white font-bold text-base w-9 h-9 rounded-full flex items-center justify-center border-2 border-white shadow-md" title="Nhấn để xem thông tin màng B">
+                B
+            </div>
+            <div id="label-C" class="label-3d bg-amber-600 hover:bg-amber-700 text-white font-bold text-base w-9 h-9 rounded-full flex items-center justify-center border-2 border-white shadow-md" title="Nhấn để xem thông tin màng C">
+                C
+            </div>
+            <!-- Nhãn mực nước -->
+            <div id="label-water" class="absolute pointer-events-none text-xs font-bold text-blue-800 bg-white/95 px-2.5 py-1 rounded border border-blue-400 shadow-sm hidden sm:block" style="transform: translate(-100%, -50%);">
+                Mặt thoáng (h = 0 cm)
+            </div>
+
+            <!-- THANH CÔNG CỤ GÓC NHÌN TRÊN MÀN HÌNH 3D -->
+            <div class="absolute top-3 left-3 z-20 flex flex-wrap gap-2 pointer-events-none">
+                <div class="bg-white/95 border border-slate-300 px-3 py-1.5 rounded text-xs sm:text-sm text-slate-800 flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-hand-pointer text-[#b91c1c]"></i>
+                    <span>Kéo trực tiếp <b>bình trụ</b> lên/xuống hoặc nhấn vào <b>A, B, C</b></span>
+                </div>
+                <button id="btn-reset-cam" class="pointer-events-auto bg-white hover:bg-red-50 border border-slate-300 px-3 py-1.5 rounded text-xs sm:text-sm text-[#b91c1c] font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer">
+                    <i class="fa-solid fa-eye"></i> Đặt lại góc nhìn chuẩn
+                </button>
+            </div>
+
+            <!-- THÔNG TIN KHOA HỌC KHI CLICK VÀO MÀNG A, B, C -->
+            <div id="membrane-info-box" class="absolute bottom-4 left-4 right-4 sm:right-auto sm:max-w-md z-20 bg-white rounded-lg p-4 shadow-lg border border-slate-300 border-l-4 border-l-[#b91c1c]">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span id="info-badge" class="w-7 h-7 rounded-full bg-[#b91c1c] text-white font-bold text-sm flex items-center justify-center shrink-0">i</span>
+                        <h3 id="info-title" class="font-bold text-sm sm:text-base text-slate-900">Thông tin quan sát màng cao su</h3>
+                    </div>
+                    <button id="btn-close-info" class="text-slate-400 hover:text-slate-700 text-sm p-1 cursor-pointer">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <p id="info-desc" class="text-xs sm:text-sm text-slate-700 mt-2 leading-relaxed">
+                    Hãy nhấn nút <b>"NHÚNG BÌNH VÀO NƯỚC"</b> hoặc nhấn vào các nhãn <b>A, B, C</b> trên bình trụ để tìm hiểu hướng và độ lớn áp suất nước tác dụng lên từng vị trí.
+                </p>
+                <div id="info-metrics" class="mt-2.5 pt-2.5 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                    <div class="bg-slate-100 px-2.5 py-1.5 rounded border border-slate-200">
+                        <span class="text-slate-600">Độ sâu:</span>
+                        <span id="info-depth" class="font-bold text-[#b91c1c] ml-1">0.0 cm</span>
+                    </div>
+                    <div class="bg-slate-100 px-2.5 py-1.5 rounded border border-slate-200">
+                        <span class="text-slate-600">Độ lõm:</span>
+                        <span id="info-deform" class="font-bold text-[#b91c1c] ml-1">0.0 mm</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BẢNG SO SÁNH A - B - C NỔI TRỰC QUAN (MẶT CẮT DỌC 2D) -->
+            <div id="compare-modal" class="hidden absolute top-14 right-4 z-20 w-80 sm:w-96 bg-white rounded-lg p-4 shadow-xl border-2 border-[#b91c1c]">
+                <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-200">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-scale-balanced text-[#b91c1c]"></i>
+                        <h3 class="font-bold text-sm text-slate-900 uppercase">Mặt cắt so sánh A – B – C</h3>
+                    </div>
+                    <button id="btn-close-compare" class="text-slate-400 hover:text-slate-700 cursor-pointer">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Hình vẽ SVG mặt cắt trực quan trên nền sáng -->
+                <div class="bg-slate-50 rounded p-3 border border-slate-200 flex flex-col items-center">
+                    <span class="text-xs text-slate-700 mb-1 font-bold">Hình cắt dọc bình trụ (tỉ lệ phóng đại)</span>
+                    <svg id="cross-section-svg" width="240" height="170" viewBox="0 0 240 170" class="overflow-visible">
+                        <!-- Nền nước xung quanh -->
+                        <rect id="svg-water-bg" x="10" y="95" width="220" height="70" fill="rgba(14, 165, 233, 0.22)" rx="4" />
+                        <line id="svg-water-line" x1="10" y1="95" x2="230" y2="95" stroke="#0284c7" stroke-width="2" stroke-dasharray="4 2" />
+                        
+                        <!-- Lòng bình rỗng (Chứa không khí) -->
+                        <rect x="75" y="15" width="90" height="120" fill="#ffffff" />
+                        
+                        <!-- Thành bình trên & dưới lỗ A, B -->
+                        <line x1="75" y1="15" x2="75" y2="60" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+                        <line x1="75" y1="95" x2="75" y2="135" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+                        
+                        <line x1="165" y1="15" x2="165" y2="60" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+                        <line x1="165" y1="95" x2="165" y2="135" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+
+                        <!-- Viền đáy bình -->
+                        <line x1="75" y1="135" x2="95" y2="135" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+                        <line x1="145" y1="135" x2="165" y2="135" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+
+                        <!-- Đường cong màng A (Trái) -->
+                        <path id="svg-path-A" d="M 75 60 Q 75 77.5 75 95" fill="rgba(200, 30, 30, 0.2)" stroke="#c81e1e" stroke-width="3.5" />
+                        <!-- Đường cong màng B (Phải) -->
+                        <path id="svg-path-B" d="M 165 60 Q 165 77.5 165 95" fill="rgba(200, 30, 30, 0.2)" stroke="#c81e1e" stroke-width="3.5" />
+                        <!-- Đường cong màng C (Đáy) -->
+                        <path id="svg-path-C" d="M 95 135 Q 120 135 145 135" fill="rgba(217, 119, 6, 0.25)" stroke="#d97706" stroke-width="3.5" />
+
+                        <!-- Mũi tên áp suất SVG -->
+                        <g id="svg-arrows" opacity="0">
+                            <line id="svg-arr-A" x1="40" y1="77.5" x2="70" y2="77.5" stroke="#0284c7" stroke-width="2.5" />
+                            <polygon id="svg-head-A" points="73,77.5 66,73.5 66,81.5" fill="#0284c7" />
+                            <line id="svg-arr-B" x1="200" y1="77.5" x2="170" y2="77.5" stroke="#0284c7" stroke-width="2.5" />
+                            <polygon id="svg-head-B" points="167,77.5 174,73.5 174,81.5" fill="#0284c7" />
+                            <line id="svg-arr-C" x1="120" y1="168" x2="120" y2="138" stroke="#0284c7" stroke-width="3" />
+                            <polygon id="svg-head-C" points="120,134 115,142 125,142" fill="#0284c7" />
+                        </g>
+
+                        <!-- Chữ A, B, C -->
+                        <text x="52" y="82" fill="#b91c1c" font-size="14" font-weight="bold">A</text>
+                        <text x="176" y="82" fill="#b91c1c" font-size="14" font-weight="bold">B</text>
+                        <text x="115" y="155" fill="#b45309" font-size="14" font-weight="bold">C</text>
+                    </svg>
+                </div>
+
+                <!-- Nhận xét tự động theo độ sâu -->
+                <div id="compare-verdict" class="mt-3 text-xs sm:text-sm space-y-1.5 bg-red-50/70 p-3 rounded border border-red-200">
+                    <div class="flex justify-between">
+                        <span class="text-slate-700">• Màng A và B:</span>
+                        <span id="comp-ab-text" class="font-bold text-[#b91c1c]">Chưa ngập nước (Phẳng)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-700">• Màng C (Đáy):</span>
+                        <span id="comp-c-text" class="font-bold text-amber-700">Chưa ngập nước (Phẳng)</span>
+                    </div>
+                    <div id="comp-summary" class="pt-1.5 mt-1.5 border-t border-red-200 text-slate-800 font-bold">
+                        Hãy nhúng bình vào nước để so sánh độ lõm của 3 màng A, B, C.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BẢNG ĐIỀU KHIỂN & SỐ LIỆU (BÊN PHẢI - NỀN TRẮNG, VIỀN ĐỎ RÕ RÀNG) -->
+        <aside class="w-full lg:w-[400px] bg-white border-t lg:border-t-0 lg:border-l border-slate-300 p-4 flex flex-col gap-3.5 overflow-y-auto shrink-0 z-20">
+
+            <!-- NHÓM 1: ĐIỀU KHIỂN ĐỘ SÂU NHÚNG BÌNH -->
+            <div class="panel-box rounded-lg p-3.5 border-t-4 border-t-[#b91c1c] space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold uppercase text-[#b91c1c] flex items-center gap-1.5">
+                        <i class="fa-solid fa-sliders"></i> 1. Điều khiển nhúng bình
+                    </h2>
+                    <span id="slider-val-badge" class="text-xs font-bold px-2.5 py-0.5 rounded bg-red-100 text-[#b91c1c] border border-red-200">
+                        0% (Ngoài cốc)
+                    </span>
+                </div>
+
+                <button id="btn-immerse" class="w-full py-3 px-4 rounded-lg bg-[#c81e1e] hover:bg-[#991b1b] active:scale-[0.99] text-white font-bold text-sm sm:text-base shadow flex items-center justify-center gap-2 transition cursor-pointer">
+                    <i class="fa-solid fa-arrow-down"></i>
+                    <span id="btn-immerse-text">NHÚNG BÌNH VÀO NƯỚC</span>
+                </button>
+
+                <!-- Thanh trượt điều chỉnh độ sâu -->
+                <div class="pt-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="depth-slider" class="text-xs sm:text-sm font-bold text-slate-700">
+                            Kéo thanh trượt để chỉnh độ sâu:
+                        </label>
+                    </div>
+                    <input id="depth-slider" type="range" min="0" max="100" step="0.5" value="0" class="w-full my-1">
+                </div>
+
+                <!-- Các nút chọn nhanh mức nhúng -->
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="btn-depth-out" class="py-2 px-2 rounded bg-slate-100 hover:bg-red-50 hover:text-[#b91c1c] hover:border-red-300 text-xs sm:text-sm font-bold text-slate-700 border border-slate-300 transition cursor-pointer">
+                        Ngoài nước
+                    </button>
+                    <button id="btn-depth-shallow" class="py-2 px-2 rounded bg-slate-100 hover:bg-red-50 hover:text-[#b91c1c] hover:border-red-300 text-xs sm:text-sm font-bold text-slate-700 border border-slate-300 transition cursor-pointer">
+                        Nhúng nông
+                    </button>
+                    <button id="btn-depth-deep" class="py-2 px-2 rounded bg-slate-100 hover:bg-red-50 hover:text-[#b91c1c] hover:border-red-300 text-xs sm:text-sm font-bold text-slate-700 border border-slate-300 transition cursor-pointer">
+                        Nhúng sâu
+                    </button>
+                </div>
+            </div>
+
+            <!-- NHÓM 2: CÔNG CỤ QUAN SÁT TRỰC QUAN -->
+            <div class="panel-box rounded-lg p-3.5 space-y-2.5">
+                <h2 class="text-sm font-bold uppercase text-[#b91c1c] flex items-center gap-1.5">
+                    <i class="fa-solid fa-eye"></i> 2. Công cụ quan sát
+                </h2>
+
+                <div class="grid grid-cols-1 gap-2">
+                    <button id="btn-toggle-vectors" class="w-full py-2.5 px-3 rounded bg-red-50 hover:bg-red-100 border border-[#b91c1c] text-xs sm:text-sm font-bold text-slate-800 flex items-center justify-between transition cursor-pointer">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-arrows-to-circle text-[#b91c1c]"></i>
+                            Quan sát áp suất (Mũi tên lực ép)
+                        </span>
+                        <span id="badge-vectors" class="text-xs px-2 py-0.5 rounded bg-[#b91c1c] text-white font-bold">Đang bật</span>
+                    </button>
+
+                    <button id="btn-toggle-compare" class="w-full py-2.5 px-3 rounded bg-slate-50 hover:bg-red-50 border border-slate-300 text-xs sm:text-sm font-bold text-slate-800 flex items-center justify-between transition cursor-pointer">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-scale-balanced text-[#b91c1c]"></i>
+                            So sánh A – B – C (Mặt cắt dọc)
+                        </span>
+                        <span id="badge-compare" class="text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold">Đang tắt</span>
+                    </button>
+
+                    <button id="btn-reset" class="w-full py-2 px-3 rounded bg-white hover:bg-red-50 border border-red-300 text-xs sm:text-sm font-bold text-[#b91c1c] flex items-center justify-center gap-2 transition cursor-pointer">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        Đặt lại thí nghiệm từ đầu
+                    </button>
+                </div>
+            </div>
+
+            <!-- NHÓM 3: BẢNG THÔNG SỐ ĐO ĐẠC THỜI GIAN THỰC -->
+            <div class="panel-box rounded-lg p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-sm font-bold uppercase text-[#b91c1c] flex items-center gap-1.5">
+                            <i class="fa-solid fa-table"></i> 3. Kết quả quan sát (p = d·h)
+                        </h2>
+                    </div>
+
+                    <!-- Thẻ Màng A -->
+                    <div id="card-A" class="p-2.5 rounded bg-slate-50 border border-slate-300 mb-2 cursor-pointer hover:border-[#b91c1c] transition">
+                        <div class="flex justify-between items-center text-xs sm:text-sm mb-1">
+                            <span class="font-bold text-[#b91c1c] flex items-center gap-1.5">
+                                <span class="w-5 h-5 rounded-full bg-[#c81e1e] text-white text-xs flex items-center justify-center">A</span>
+                                Màng A (Thành trái)
+                            </span>
+                            <span id="depth-A" class="font-bold text-slate-800">hA = 0.0 cm</span>
+                        </div>
+                        <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                            <div id="bar-A" class="bg-[#c81e1e] h-full w-0 transition-all duration-75"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-600 mt-1 font-medium">
+                            <span id="status-A">Phẳng (Chưa biến dạng)</span>
+                            <span id="press-A" class="font-bold text-slate-900">0 Pa</span>
+                        </div>
+                    </div>
+
+                    <!-- Thẻ Màng B -->
+                    <div id="card-B" class="p-2.5 rounded bg-slate-50 border border-slate-300 mb-2 cursor-pointer hover:border-[#b91c1c] transition">
+                        <div class="flex justify-between items-center text-xs sm:text-sm mb-1">
+                            <span class="font-bold text-[#b91c1c] flex items-center gap-1.5">
+                                <span class="w-5 h-5 rounded-full bg-[#c81e1e] text-white text-xs flex items-center justify-center">B</span>
+                                Màng B (Thành phải)
+                            </span>
+                            <span id="depth-B" class="font-bold text-slate-800">hB = 0.0 cm</span>
+                        </div>
+                        <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                            <div id="bar-B" class="bg-[#c81e1e] h-full w-0 transition-all duration-75"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-600 mt-1 font-medium">
+                            <span id="status-B">Phẳng (Chưa biến dạng)</span>
+                            <span id="press-B" class="font-bold text-slate-900">0 Pa</span>
+                        </div>
+                    </div>
+
+                    <!-- Thẻ Màng C -->
+                    <div id="card-C" class="p-2.5 rounded bg-slate-50 border border-slate-300 cursor-pointer hover:border-amber-600 transition">
+                        <div class="flex justify-between items-center text-xs sm:text-sm mb-1">
+                            <span class="font-bold text-amber-800 flex items-center gap-1.5">
+                                <span class="w-5 h-5 rounded-full bg-amber-600 text-white text-xs font-bold flex items-center justify-center">C</span>
+                                Màng C (Ở đáy bình)
+                            </span>
+                            <span id="depth-C" class="font-bold text-slate-800">hC = 0.0 cm</span>
+                        </div>
+                        <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                            <div id="bar-C" class="bg-amber-600 h-full w-0 transition-all duration-75"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-600 mt-1 font-medium">
+                            <span id="status-C">Phẳng (Chưa biến dạng)</span>
+                            <span id="press-C" class="font-bold text-slate-900">0 Pa</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ghi chú vật lí chuẩn SGK -->
+                <div class="p-2.5 rounded bg-red-50 border border-red-200 text-xs text-slate-800 leading-relaxed">
+                    <b class="text-[#b91c1c]">Ghi nhớ:</b> Màng A và B cùng độ sâu (hA = hB) nên biến dạng như nhau. Màng C sâu hơn (hC &gt; hA) nên bị ép lõm nhiều hơn.
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- MODAL 1: BẢNG HƯỚNG DẪN THAO TÁC NGẮN GỌN -->
+    <div id="guide-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white border-2 border-[#b91c1c] rounded-lg max-w-lg w-full p-6 shadow-2xl text-slate-800">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+                <h3 class="text-lg font-bold text-[#b91c1c] flex items-center gap-2">
+                    <i class="fa-solid fa-book-open"></i>
+                    HƯỚNG DẪN THỰC HIỆN THÍ NGHIỆM
+                </h3>
+                <button id="btn-close-guide" class="text-slate-400 hover:text-slate-700 text-lg cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="mt-4 space-y-3 text-sm text-slate-700">
+                <div class="flex items-start gap-3">
+                    <span class="w-6 h-6 rounded-full bg-[#b91c1c] text-white font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+                    <p><b>Nhúng bình vào nước:</b> Nhấn nút đỏ <b>"NHÚNG BÌNH VÀO NƯỚC"</b> hoặc kéo <b>thanh trượt độ sâu</b> (hoặc dùng chuột kéo trực tiếp bình trụ 3D).</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="w-6 h-6 rounded-full bg-[#b91c1c] text-white font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+                    <p><b>Quan sát 3 màng cao su:</b> Chú ý độ lõm của màng <b>A</b> (thành trái), màng <b>B</b> (thành phải) và màng <b>C</b> (đáy bình) khi nhúng nông và nhúng sâu.</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="w-6 h-6 rounded-full bg-[#b91c1c] text-white font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+                    <p><b>Khám phá lực ép của nước:</b> Bật nút <b>"Quan sát áp suất"</b> để hiện mũi tên lực ép; bật <b>"So sánh A – B – C"</b> để xem hình cắt dọc.</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="w-6 h-6 rounded-full bg-[#b91c1c] text-white font-bold flex items-center justify-center shrink-0 mt-0.5">4</span>
+                    <p><b>Chốt kiến thức:</b> Nhấn nút <b>"Câu hỏi & Kết luận"</b> ở thanh tiêu đề trên cùng để trả lời câu hỏi thảo luận.</p>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button id="btn-ok-guide" class="px-5 py-2 rounded bg-[#b91c1c] hover:bg-red-800 text-white font-bold text-sm transition cursor-pointer">
+                    Đã hiểu, bắt đầu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: PHẦN CHỐT KIẾN THỨC & CÂU HỎI TƯƠNG TÁC -->
+    <div id="quiz-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white border-2 border-[#b91c1c] rounded-lg max-w-2xl w-full p-6 shadow-2xl my-auto max-h-[92vh] overflow-y-auto text-slate-800">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-question text-[#b91c1c] text-xl"></i>
+                    <h3 class="text-lg font-bold text-[#b91c1c] uppercase">Thảo luận & Chốt kiến thức bài học</h3>
+                </div>
+                <button id="btn-close-quiz" class="text-slate-400 hover:text-slate-700 text-lg cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="mt-4 space-y-4 text-sm">
+                <!-- Câu hỏi 1 -->
+                <div class="bg-slate-50 p-4 rounded border border-slate-300">
+                    <p class="font-bold text-[#b91c1c] mb-2 text-base">
+                        Câu hỏi 1: Khi nhúng bình vào nước, các màng cao su A, B và C có bị biến dạng không? Điều đó chứng tỏ điều gì?
+                    </p>
+                    <div class="space-y-2 mt-2" id="q1-options">
+                        <label class="flex items-start gap-2.5 p-2.5 rounded bg-white hover:bg-red-50 border border-slate-300 cursor-pointer">
+                            <input type="radio" name="q1" value="wrong1" class="mt-1 accent-[#b91c1c]">
+                            <span>Chỉ có màng C ở đáy bình bị biến dạng, chứng tỏ nước chỉ gây áp suất lên đáy bình.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2.5 rounded bg-white hover:bg-red-50 border border-slate-300 cursor-pointer">
+                            <input type="radio" name="q1" value="correct" class="mt-1 accent-[#b91c1c]">
+                            <span>Cả ba màng cao su A, B và C đều bị nước ép cong vào phía trong bình. Điều đó chứng tỏ chất lỏng gây áp suất lên vật theo mọi phương (cả thành bình và đáy bình).</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2.5 rounded bg-white hover:bg-red-50 border border-slate-300 cursor-pointer">
+                            <input type="radio" name="q1" value="wrong2" class="mt-1 accent-[#b91c1c]">
+                            <span>Các màng cao su bị phồng ra phía ngoài cốc nước.</span>
+                        </label>
+                    </div>
+                    <div id="q1-feedback" class="hidden mt-2 text-xs sm:text-sm font-bold px-3 py-2 rounded"></div>
+                </div>
+
+                <!-- Câu hỏi 2 -->
+                <div class="bg-slate-50 p-4 rounded border border-slate-300">
+                    <p class="font-bold text-[#b91c1c] mb-2 text-base">
+                        Câu hỏi 2: Vì sao màng A và B biến dạng tương tự nhau, trong khi màng C biến dạng nhiều hơn?
+                    </p>
+                    <div class="space-y-2 mt-2" id="q2-options">
+                        <label class="flex items-start gap-2.5 p-2.5 rounded bg-white hover:bg-red-50 border border-slate-300 cursor-pointer">
+                            <input type="radio" name="q2" value="correct" class="mt-1 accent-[#b91c1c]">
+                            <span>Vì màng A và B nằm ở cùng một độ sâu nên chịu áp suất nước như nhau; còn màng C nằm ở độ sâu lớn hơn nên chịu áp suất nước lớn hơn và bị biến dạng nhiều hơn.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2.5 rounded bg-white hover:bg-red-50 border border-slate-300 cursor-pointer">
+                            <input type="radio" name="q2" value="wrong1" class="mt-1 accent-[#b91c1c]">
+                            <span>Vì màng cao su C mỏng hơn màng cao su A và B.</span>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2.5 rounded bg-white hover:bg-red-50 border border-slate-300 cursor-pointer">
+                            <input type="radio" name="q2" value="wrong2" class="mt-1 accent-[#b91c1c]">
+                            <span>Vì độ sâu không ảnh hưởng đến áp suất của chất lỏng.</span>
+                        </label>
+                    </div>
+                    <div id="q2-feedback" class="hidden mt-2 text-xs sm:text-sm font-bold px-3 py-2 rounded"></div>
+                </div>
+
+                <!-- Nút Kiểm tra câu trả lời -->
+                <div class="flex justify-center">
+                    <button id="btn-submit-quiz" class="px-6 py-2.5 rounded bg-[#c81e1e] hover:bg-red-800 text-white font-bold text-sm shadow transition cursor-pointer">
+                        Kiểm tra câu trả lời & Xem Kết luận
+                    </button>
+                </div>
+
+                <!-- HỘP KẾT LUẬN CHUẨN SGK -->
+                <div id="conclusion-box" class="hidden bg-red-50 border-2 border-[#b91c1c] rounded-lg p-5">
+                    <div class="flex items-center gap-2 text-[#b91c1c] font-bold text-base uppercase mb-2">
+                        <i class="fa-solid fa-check-double"></i>
+                        <span>KẾT LUẬN BÀI HỌC</span>
+                    </div>
+                    <ol class="list-decimal list-inside space-y-2 text-slate-900 font-bold text-sm sm:text-base">
+                        <li class="p-2.5 rounded bg-white border border-red-200">
+                            Chất lỏng gây áp suất lên vật theo mọi phương.
+                        </li>
+                        <li class="p-2.5 rounded bg-white border border-red-200">
+                            Áp suất chất lỏng tăng theo độ sâu.
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT XỬ LÝ MÔ PHỎNG 3D THREE.JS & VẬT LÍ -->
+    <script>
+        // =========================================================================
+        // 1. CẤU HÌNH THÔNG SỐ KHOA HỌC & HÌNH HỌC DỤNG CỤ THÍ NGHIỆM
+        // =========================================================================
+        const CONFIG = {
+            beakerRadius: 3.15,
+            beakerHeight: 6.4,
+            beakerBottomY: -3.2,
+            waterSurfaceY: 2.0,         // Mực nước trong cốc (h = 0)
+
+            cylRadius: 1.35,            // Bán kính bình trụ thí nghiệm
+            cylHeight: 3.4,             // Chiều cao bình trụ
+            holeRadius: 0.60,           // Bán kính 3 màng cao su A, B, C
+            sideHoleLocalY: -0.35,      // Hạ vị trí lỗ A (trái) và B (phải) xuống gần nửa dưới bình hơn để sớm ngập nước
+            bottomHoleLocalY: -1.7,     // Vị trí màng C ở đáy bình (-cylHeight / 2)
+
+            cylStartY: 4.15,            // Vị trí ban đầu: Bình trụ nằm ngoài nước
+            cylMinY: -0.85,             // Vị trí nhúng sâu nhất trong cốc nước
+
+            cmPerUnit: 5.0,             // Tỉ lệ quy đổi: 1 đơn vị 3D = 5 cm thực tế
+            waterSpecificWeight: 10000, // Trọng lượng riêng của nước d = 10 000 N/m3
+            maxDepthUnit: 4.45          // Độ sâu tối đa dùng để chuẩn hóa độ biến dạng
+        };
+
+        const state = {
+            immersionProgress: 0,       // 0% -> 100%
+            targetProgress: 0,
+            isAnimating: false,
+            cylY: CONFIG.cylStartY,
+            showVectors: true,          // Bật sẵn mũi tên lực ép để học sinh thấy ngay khi nhúng
+            showCompare: false,
+            selectedMembrane: null,     // 'A', 'B', hoặc 'C'
+            isDraggingCylinder: false
+        };
+
+        // =========================================================================
+        // 2. KHỞI TẠO KHÔNG GIAN 3D THREE.JS
+        // =========================================================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf1f5f9);
+
+        // Camera góc nhìn nghiêng 3/4 quan sát rõ 2 màng bên A, B và màng đáy C
+        const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(0, 2.6, 13.8);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Điều khiển xoay góc nhìn
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0.2, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.06;
+        controls.maxPolarAngle = Math.PI * 0.62;
+        controls.minDistance = 6;
+        controls.maxDistance = 22;
+
+        // Hệ thống ánh sáng phòng thí nghiệm sáng rõ
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+        scene.add(ambientLight);
+
+        const mainDirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        mainDirLight.position.set(8, 14, 10);
+        mainDirLight.castShadow = true;
+        scene.add(mainDirLight);
+
+        const fillLight = new THREE.DirectionalLight(0xe0f2fe, 0.5);
+        fillLight.position.set(-10, -4, 6);
+        scene.add(fillLight);
+
+        const bottomRimLight = new THREE.PointLight(0xffffff, 0.4, 15);
+        bottomRimLight.position.set(0, -3.5, 4);
+        scene.add(bottomRimLight);
+
+        // Mặt bàn thí nghiệm sáng màu
+        const tableGeo = new THREE.CylinderGeometry(9, 9.5, 0.5, 64);
+        const tableMat = new THREE.MeshStandardMaterial({
+            color: 0xe2e8f0,
+            roughness: 0.7,
+            metalness: 0.05
+        });
+        const tableMesh = new THREE.Mesh(tableGeo, tableMat);
+        tableMesh.position.y = CONFIG.beakerBottomY - 0.35;
+        tableMesh.receiveShadow = true;
+        scene.add(tableMesh);
+
+        // =========================================================================
+        // 3. DỰNG CỐC NƯỚC THỦY TINH TRONG SUỐT & MẶT NƯỚC SÓNG NHẸ
+        // =========================================================================
+        const beakerGroup = new THREE.Group();
+        scene.add(beakerGroup);
+
+        // Khối nước màu xanh nhạt bên trong cốc
+        const waterHeight = CONFIG.waterSurfaceY - CONFIG.beakerBottomY;
+        const waterRadius = CONFIG.beakerRadius - 0.08;
+        const waterBodyGeo = new THREE.CylinderGeometry(waterRadius, waterRadius, waterHeight, 64, 1, true);
+        const waterBodyMat = new THREE.MeshPhongMaterial({
+            color: 0x0284c7,
+            emissive: 0x0284c7,
+            emissiveIntensity: 0.1,
+            transparent: true,
+            opacity: 0.24,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const waterBodyMesh = new THREE.Mesh(waterBodyGeo, waterBodyMat);
+        waterBodyMesh.position.y = CONFIG.beakerBottomY + waterHeight / 2;
+        beakerGroup.add(waterBodyMesh);
+
+        // Đáy nước
+        const waterBottomGeo = new THREE.CircleGeometry(waterRadius, 64);
+        waterBottomGeo.rotateX(-Math.PI / 2);
+        const waterBottomMesh = new THREE.Mesh(waterBottomGeo, waterBodyMat);
+        waterBottomMesh.position.y = CONFIG.beakerBottomY + 0.02;
+        beakerGroup.add(waterBottomMesh);
+
+        // Mặt thoáng chất lỏng có hiệu ứng gợn sóng nhẹ
+        const waveSurfaceGeo = new THREE.RingGeometry(0.001, waterRadius, 64, 16);
+        waveSurfaceGeo.rotateX(-Math.PI / 2);
+        const waveSurfaceBasePos = waveSurfaceGeo.attributes.position.clone();
+
+        const waterSurfaceMat = new THREE.MeshPhongMaterial({
+            color: 0x38bdf8,
+            shininess: 100,
+            transparent: true,
+            opacity: 0.42,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const waterSurfaceMesh = new THREE.Mesh(waveSurfaceGeo, waterSurfaceMat);
+        waterSurfaceMesh.position.y = CONFIG.waterSurfaceY;
+        beakerGroup.add(waterSurfaceMesh);
+
+        // Đường viền mặt thoáng rõ nét
+        const meniscusCurve = new THREE.EllipseCurve(0, 0, waterRadius, waterRadius, 0, Math.PI * 2, false, 0);
+        const meniscusPoints = meniscusCurve.getPoints(96);
+        const meniscusGeo = new THREE.BufferGeometry().setFromPoints(meniscusPoints);
+        meniscusGeo.rotateX(Math.PI / 2);
+        const meniscusMat = new THREE.LineBasicMaterial({ color: 0x0284c7, linewidth: 2 });
+        const meniscusLine = new THREE.Line(meniscusGeo, meniscusMat);
+        meniscusLine.position.y = CONFIG.waterSurfaceY;
+        beakerGroup.add(meniscusLine);
+
+        // Thành cốc thủy tinh trong suốt
+        const beakerGeo = new THREE.CylinderGeometry(CONFIG.beakerRadius, CONFIG.beakerRadius, CONFIG.beakerHeight, 64, 1, true);
+        const beakerGlassMat = new THREE.MeshPhongMaterial({
+            color: 0x64748b,
+            specular: 0xffffff,
+            shininess: 120,
+            transparent: true,
+            opacity: 0.14,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const beakerMesh = new THREE.Mesh(beakerGeo, beakerGlassMat);
+        beakerMesh.position.y = CONFIG.beakerBottomY + CONFIG.beakerHeight / 2;
+        beakerGroup.add(beakerMesh);
+
+        // Đáy cốc thủy tinh dày
+        const beakerBaseGeo = new THREE.CylinderGeometry(CONFIG.beakerRadius, CONFIG.beakerRadius, 0.18, 64);
+        const beakerBaseMesh = new THREE.Mesh(beakerBaseGeo, beakerGlassMat);
+        beakerBaseMesh.position.y = CONFIG.beakerBottomY - 0.05;
+        beakerGroup.add(beakerBaseMesh);
+
+        // Vành miệng cốc thủy tinh
+        const beakerRimGeo = new THREE.TorusGeometry(CONFIG.beakerRadius, 0.06, 16, 64);
+        beakerRimGeo.rotateX(Math.PI / 2);
+        const beakerRimMat = new THREE.MeshPhongMaterial({ color: 0x475569, transparent: true, opacity: 0.5 });
+        const beakerRimMesh = new THREE.Mesh(beakerRimGeo, beakerRimMat);
+        beakerRimMesh.position.y = CONFIG.beakerBottomY + CONFIG.beakerHeight;
+        beakerGroup.add(beakerRimMesh);
+
+        // Vạch chia độ sâu trên thành cốc
+        const scaleGroup = new THREE.Group();
+        for (let cm = 0; cm <= 25; cm += 5) {
+            const yPos = CONFIG.waterSurfaceY - (cm * 0.2);
+            if (yPos >= CONFIG.beakerBottomY) {
+                const tickLen = (cm % 10 === 0) ? 0.35 : 0.2;
+                const tickGeo = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(-CONFIG.beakerRadius + 0.05, yPos, 0.8),
+                    new THREE.Vector3(-CONFIG.beakerRadius + 0.05 + tickLen, yPos, 0.8)
+                ]);
+                const tickLine = new THREE.Line(tickGeo, new THREE.LineBasicMaterial({ color: 0x334155 }));
+                scaleGroup.add(tickLine);
+            }
+        }
+        beakerGroup.add(scaleGroup);
+
+        // =========================================================================
+        // 4. DỰNG BÌNH TRỤ THÍ NGHIỆM CÓ 3 LỖ & 3 MÀNG CAO SU ĐÀN HỒI A, B, C
+        // =========================================================================
+        const cylinderGroup = new THREE.Group();
+        cylinderGroup.position.y = state.cylY;
+        scene.add(cylinderGroup);
+
+        // Hàm tạo hình trụ rỗng có khoét 2 lỗ tròn thật sự ở thành bên trái (A) và bên phải (B)
+        function createCylinderWithSideHoles(radius, height, holeRadius, holeLocalY) {
+            const radialSegs = 96;
+            const heightSegs = 44;
+            const positions = [];
+            const normals = [];
+            const uvs = [];
+            const indices = [];
+
+            for (let y = 0; y <= heightSegs; y++) {
+                const v = y / heightSegs;
+                const py = (v - 0.5) * height;
+                for (let x = 0; x <= radialSegs; x++) {
+                    const u = x / radialSegs;
+                    const theta = u * Math.PI * 2;
+                    const px = radius * Math.cos(theta);
+                    const pz = radius * Math.sin(theta);
+
+                    positions.push(px, py, pz);
+                    normals.push(Math.cos(theta), 0, Math.sin(theta));
+                    uvs.push(u, v);
+                }
+            }
+
+            const holeCutSq = Math.pow(holeRadius * 0.94, 2);
+            for (let y = 0; y < heightSegs; y++) {
+                for (let x = 0; x < radialSegs; x++) {
+                    const u = (x + 0.5) / radialSegs;
+                    const v = (y + 0.5) / heightSegs;
+                    const theta = u * Math.PI * 2;
+                    const py = (v - 0.5) * height;
+                    const px = radius * Math.cos(theta);
+                    const pz = radius * Math.sin(theta);
+
+                    // Kiểm tra tâm mặt tứ giác có nằm trong lỗ A (-radius) hoặc lỗ B (+radius) không
+                    const distASq = Math.pow(py - holeLocalY, 2) + Math.pow(pz, 2);
+                    const isInsideHoleA = (px < -radius * 0.65) && (distASq < holeCutSq);
+                    const isInsideHoleB = (px > radius * 0.65) && (distASq < holeCutSq);
+
+                    if (!isInsideHoleA && !isInsideHoleB) {
+                        const i0 = y * (radialSegs + 1) + x;
+                        const i1 = i0 + 1;
+                        const i2 = (y + 1) * (radialSegs + 1) + x;
+                        const i3 = i2 + 1;
+                        indices.push(i0, i2, i1);
+                        indices.push(i1, i2, i3);
+                    }
+                }
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            geo.setIndex(indices);
+            return geo;
+        }
+
+        // Thân bình trụ trong suốt có khoét 2 lỗ bên A và B
+        const cylBodyGeo = createCylinderWithSideHoles(
+            CONFIG.cylRadius,
+            CONFIG.cylHeight,
+            CONFIG.holeRadius,
+            CONFIG.sideHoleLocalY
+        );
+        const cylPlasticMat = new THREE.MeshPhongMaterial({
+            color: 0x334155,
+            specular: 0xffffff,
+            shininess: 100,
+            transparent: true,
+            opacity: 0.22,
+            side: THREE.DoubleSide
+        });
+        const cylBodyMesh = new THREE.Mesh(cylBodyGeo, cylPlasticMat);
+        cylinderGroup.add(cylBodyMesh);
+
+        // Đáy bình trụ có lỗ tròn ở tâm cho màng C
+        const bottomFlangeGeo = new THREE.RingGeometry(CONFIG.holeRadius, CONFIG.cylRadius, 64);
+        bottomFlangeGeo.rotateX(Math.PI / 2);
+        const bottomFlangeMesh = new THREE.Mesh(bottomFlangeGeo, cylPlasticMat);
+        bottomFlangeMesh.position.y = CONFIG.bottomHoleLocalY;
+        cylinderGroup.add(bottomFlangeMesh);
+
+        // Nắp đậy kín phía trên bình trụ & Thanh cầm tay
+        const topCapGeo = new THREE.CylinderGeometry(CONFIG.cylRadius + 0.06, CONFIG.cylRadius + 0.06, 0.16, 64);
+        const topCapMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4, metalness: 0.3 });
+        const topCapMesh = new THREE.Mesh(topCapGeo, topCapMat);
+        topCapMesh.position.y = CONFIG.cylHeight / 2;
+        cylinderGroup.add(topCapMesh);
+
+        // Vòng đệm dưới đáy bình trụ
+        const bottomRingGeo = new THREE.TorusGeometry(CONFIG.cylRadius, 0.045, 16, 64);
+        bottomRingGeo.rotateX(Math.PI / 2);
+        const bottomRingMesh = new THREE.Mesh(bottomRingGeo, topCapMat);
+        bottomRingMesh.position.y = CONFIG.bottomHoleLocalY;
+        cylinderGroup.add(bottomRingMesh);
+
+        // Trụ cầm phía trên bình
+        const handleRodGeo = new THREE.CylinderGeometry(0.1, 0.1, 2.8, 24);
+        const handleRodMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.5, roughness: 0.3 });
+        const handleRodMesh = new THREE.Mesh(handleRodGeo, handleRodMat);
+        handleRodMesh.position.y = CONFIG.cylHeight / 2 + 1.4;
+        cylinderGroup.add(handleRodMesh);
+
+        const handleKnobGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.22, 32);
+        const handleKnobMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.3 });
+        const handleKnobMesh = new THREE.Mesh(handleKnobGeo, handleKnobMat);
+        handleKnobMesh.position.y = CONFIG.cylHeight / 2 + 2.85;
+        cylinderGroup.add(handleKnobMesh);
+
+        // =========================================================================
+        // 5. TẠO 3 MÀNG CAO SU MỎNG ĐÀN HỒI (A, B, C) & ĐƯỜNG VIỀN MẶT CẮT
+        // =========================================================================
+        const rubberMatAB = new THREE.MeshStandardMaterial({
+            color: 0xdc2626,
+            roughness: 0.4,
+            metalness: 0.05,
+            side: THREE.DoubleSide
+        });
+
+        const rubberMatC = new THREE.MeshStandardMaterial({
+            color: 0xd97706,
+            roughness: 0.38,
+            metalness: 0.05,
+            side: THREE.DoubleSide
+        });
+
+        const clampRingMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            roughness: 0.35,
+            metalness: 0.6
+        });
+
+        // Hàm khởi tạo lưới 3D cho màng cao su tròn có các vòng đồng tâm để biến dạng mượt
+        function createElasticMembraneGeometry(holeRadius) {
+            const radialSegs = 48;
+            const ringSegs = 22;
+            const positions = [];
+            const uvs = [];
+            const indices = [];
+
+            for (let r = 0; r <= ringSegs; r++) {
+                const frac = r / ringSegs;
+                const rad = frac * holeRadius;
+                for (let t = 0; t <= radialSegs; t++) {
+                    const angle = (t / radialSegs) * Math.PI * 2;
+                    const u = rad * Math.cos(angle);
+                    const v = rad * Math.sin(angle);
+                    positions.push(0, u, v);
+                    uvs.push(u / holeRadius, v / holeRadius);
+                }
+            }
+
+            for (let r = 0; r < ringSegs; r++) {
+                for (let t = 0; t < radialSegs; t++) {
+                    const i0 = r * (radialSegs + 1) + t;
+                    const i1 = i0 + 1;
+                    const i2 = (r + 1) * (radialSegs + 1) + t;
+                    const i3 = i2 + 1;
+                    indices.push(i0, i1, i2);
+                    indices.push(i1, i3, i2);
+                }
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            geo.setIndex(indices);
+            return geo;
+        }
+
+        // Màng A (Thành bên trái)
+        const geoA = createElasticMembraneGeometry(CONFIG.holeRadius);
+        const meshA = new THREE.Mesh(geoA, rubberMatAB);
+        cylinderGroup.add(meshA);
+
+        // Màng B (Thành bên phải, cùng độ cao với A)
+        const geoB = createElasticMembraneGeometry(CONFIG.holeRadius);
+        const meshB = new THREE.Mesh(geoB, rubberMatAB);
+        cylinderGroup.add(meshB);
+
+        // Màng C (Đáy bình, thấp hơn A và B)
+        const geoC = createElasticMembraneGeometry(CONFIG.holeRadius);
+        const meshC = new THREE.Mesh(geoC, rubberMatC);
+        cylinderGroup.add(meshC);
+
+        // Vòng đai giữ cố định mép màng A, B, C trên bình trụ
+        function createSideClampRing(signX) {
+            const pts = [];
+            const segs = 64;
+            for (let i = 0; i <= segs; i++) {
+                const a = (i / segs) * Math.PI * 2;
+                const dy = CONFIG.holeRadius * Math.cos(a);
+                const dz = CONFIG.holeRadius * Math.sin(a);
+                const x = signX * Math.sqrt(Math.max(0.01, CONFIG.cylRadius * CONFIG.cylRadius - dz * dz));
+                pts.push(new THREE.Vector3(x, CONFIG.sideHoleLocalY + dy, dz));
+            }
+            const curve = new THREE.CatmullRomCurve3(pts, true);
+            const tubeGeo = new THREE.TubeGeometry(curve, 64, 0.04, 12, true);
+            return new THREE.Mesh(tubeGeo, clampRingMat);
+        }
+        cylinderGroup.add(createSideClampRing(-1));
+        cylinderGroup.add(createSideClampRing(1));
+
+        const bottomClampGeo = new THREE.TorusGeometry(CONFIG.holeRadius, 0.042, 16, 64);
+        bottomClampGeo.rotateX(Math.PI / 2);
+        const bottomClampMesh = new THREE.Mesh(bottomClampGeo, clampRingMat);
+        bottomClampMesh.position.y = CONFIG.bottomHoleLocalY;
+        cylinderGroup.add(bottomClampMesh);
+
+        // Đường chỉ thị biên dạng mặt cắt (Profile Curve) trên mặt phẳng Z = 0 để dễ nhìn từ xa
+        function createProfileLine(colorHex) {
+            const pts = [];
+            for (let i = 0; i <= 32; i++) pts.push(new THREE.Vector3());
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const mat = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 3 });
+            return new THREE.Line(geo, mat);
+        }
+        const profileLineA = createProfileLine(0xffffff);
+        const profileLineB = createProfileLine(0xffffff);
+        const profileLineC = createProfileLine(0xfef08a);
+        cylinderGroup.add(profileLineA, profileLineB, profileLineC);
+
+        // =========================================================================
+        // 6. HỆ THỐNG MŨI TÊN BIỂU DIỄN ÁP SUẤT NƯỚC (VÉC-TƠ LỰC ÉP)
+        // =========================================================================
+        const vectorsGroup = new THREE.Group();
+        vectorsGroup.visible = state.showVectors;
+        cylinderGroup.add(vectorsGroup);
+
+        // Tạo cụm mũi tên màu xanh dương đậm cho từng màng
+        function createPressureArrowCluster(directionVec) {
+            const group = new THREE.Group();
+            const offsets = [
+                new THREE.Vector2(0, 0),
+                new THREE.Vector2(0, 0.28),
+                new THREE.Vector2(0, -0.28),
+                new THREE.Vector2(0.28, 0),
+                new THREE.Vector2(-0.28, 0)
+            ];
+            const arrows = [];
+            offsets.forEach((off, idx) => {
+                const arrowColor = idx === 0 ? 0x0284c7 : 0x0369a1;
+                const arr = new THREE.ArrowHelper(
+                    directionVec.clone().normalize(),
+                    new THREE.Vector3(),
+                    0.8,
+                    arrowColor,
+                    0.24,
+                    0.18
+                );
+                arrows.push({ helper: arr, offset: off, isCenter: idx === 0 });
+                group.add(arr);
+            });
+            return { group, arrows };
+        }
+
+        // Mũi tên A: Hướng từ trái vào trong bình (+X)
+        const arrowClusterA = createPressureArrowCluster(new THREE.Vector3(1, 0, 0));
+        // Mũi tên B: Hướng từ phải vào trong bình (-X)
+        const arrowClusterB = createPressureArrowCluster(new THREE.Vector3(-1, 0, 0));
+        // Mũi tên C: Hướng từ dưới lên trên vào trong bình (+Y)
+        const arrowClusterC = createPressureArrowCluster(new THREE.Vector3(0, 1, 0));
+
+        vectorsGroup.add(arrowClusterA.group, arrowClusterB.group, arrowClusterC.group);
+
+        // =========================================================================
+        // 7. CẬP NHẬT BIẾN DẠNG MÀNG CAO SU & TÍNH TOÁN VẬT LÍ CHÍNH XÁC
+        // =========================================================================
+        function updateMembraneMesh(geo, profileLine, type, bulgeAmount) {
+            const posAttr = geo.attributes.position;
+            const uvAttr = geo.attributes.uv;
+            const R = CONFIG.holeRadius;
+            const cylR = CONFIG.cylRadius;
+            const maxBulgeSide = 0.65;
+
+            for (let i = 0; i < posAttr.count; i++) {
+                const u = uvAttr.getX(i) * R;
+                const v = uvAttr.getY(i) * R;
+                const rSq = u * u + v * v;
+                const normRSq = Math.min(1.0, rSq / (R * R));
+                // Hàm parabol đàn hồi màng mỏng: bằng 0 ở viền, cực đại ở tâm
+                const domeFactor = Math.pow(1.0 - normRSq, 1.2);
+
+                if (type === 'A' || type === 'B') {
+                    // Tính độ sâu thực tế của từng điểm trên màng bên (ngay khi mép dưới chạm nước đã có lực ép)
+                    const vertexWorldY = state.cylY + CONFIG.sideHoleLocalY + u;
+                    const localDepth = Math.max(0, CONFIG.waterSurfaceY - vertexWorldY);
+                    const effectiveDepth = Math.max(localDepth, bulgeAmount * CONFIG.maxDepthUnit / maxBulgeSide * 0.85);
+                    const disp = (localDepth > 0 || bulgeAmount > 0.01)
+                        ? (effectiveDepth / CONFIG.maxDepthUnit) * maxBulgeSide * domeFactor
+                        : 0;
+
+                    const baseX = Math.sqrt(Math.max(0.01, cylR * cylR - v * v));
+                    if (type === 'A') {
+                        posAttr.setXYZ(i, -baseX + disp, CONFIG.sideHoleLocalY + u, v);
+                    } else {
+                        posAttr.setXYZ(i, baseX - disp, CONFIG.sideHoleLocalY + u, v);
+                    }
+                } else if (type === 'C') {
+                    const disp = bulgeAmount * domeFactor;
+                    posAttr.setXYZ(i, u, CONFIG.bottomHoleLocalY + disp, v);
+                }
+            }
+            posAttr.needsUpdate = true;
+            geo.computeVertexNormals();
+
+            // Cập nhật đường mặt cắt ngang Z = 0
+            const linePos = profileLine.geometry.attributes.position;
+            const count = linePos.count;
+            for (let i = 0; i < count; i++) {
+                const s = (i / (count - 1)) * 2 - 1;
+                const coord = s * R;
+                const dome = bulgeAmount * Math.pow(1.0 - s * s, 1.2);
+                if (type === 'A') {
+                    linePos.setXYZ(i, -cylR + dome + 0.01, CONFIG.sideHoleLocalY + coord, 0);
+                } else if (type === 'B') {
+                    linePos.setXYZ(i, cylR - dome - 0.01, CONFIG.sideHoleLocalY + coord, 0);
+                } else if (type === 'C') {
+                    linePos.setXYZ(i, coord, CONFIG.bottomHoleLocalY + dome + 0.01, 0);
+                }
+            }
+            linePos.needsUpdate = true;
+        }
+
+        // Cập nhật vị trí và độ dài mũi tên lực ép theo độ sâu tương ứng
+        function updateArrowCluster(cluster, type, depthUnit, bulgeAmount) {
+            const isSubmerged = depthUnit > 0.01;
+            cluster.group.visible = isSubmerged;
+            if (!isSubmerged) return;
+
+            const arrowLen = 0.45 + (depthUnit / CONFIG.maxDepthUnit) * 1.15;
+            const headLen = Math.min(0.32, arrowLen * 0.32);
+            const headWidth = headLen * 0.72;
+
+            cluster.arrows.forEach(item => {
+                const { helper, offset, isCenter } = item;
+                // Đối với màng A, B: kiểm tra xem từng mũi tên thành phần đã nằm dưới mặt nước chưa
+                if (type === 'A' || type === 'B') {
+                    const arrowWorldY = state.cylY + CONFIG.sideHoleLocalY + offset.y;
+                    const subDepth = CONFIG.waterSurfaceY - arrowWorldY;
+                    helper.visible = (subDepth > -0.15);
+                } else {
+                    helper.visible = true;
+                }
+
+                const len = isCenter ? arrowLen : arrowLen * 0.82;
+                const rNormSq = (offset.x * offset.x + offset.y * offset.y) / (CONFIG.holeRadius * CONFIG.holeRadius);
+                const localBulge = bulgeAmount * Math.max(0, Math.pow(1 - rNormSq, 1.2));
+
+                if (type === 'A') {
+                    const tipX = -CONFIG.cylRadius + localBulge - 0.04;
+                    helper.position.set(tipX - len, CONFIG.sideHoleLocalY + offset.y, offset.x);
+                    helper.setDirection(new THREE.Vector3(1, 0, 0));
+                } else if (type === 'B') {
+                    const tipX = CONFIG.cylRadius - localBulge + 0.04;
+                    helper.position.set(tipX + len, CONFIG.sideHoleLocalY + offset.y, offset.x);
+                    helper.setDirection(new THREE.Vector3(-1, 0, 0));
+                } else if (type === 'C') {
+                    const tipY = CONFIG.bottomHoleLocalY + localBulge - 0.04;
+                    helper.position.set(offset.x, tipY - len, offset.y);
+                    helper.setDirection(new THREE.Vector3(0, 1, 0));
+                }
+                helper.setLength(len, headLen, headWidth);
+            });
+        }
+
+        // Hàm tổng hợp cập nhật toàn bộ trạng thái vật lí, biến dạng 3D & bảng số liệu
+        function updateSimulationPhysics() {
+            state.cylY = CONFIG.cylStartY - (state.immersionProgress / 100) * (CONFIG.cylStartY - CONFIG.cylMinY);
+            cylinderGroup.position.y = state.cylY;
+
+            // Tọa độ Y thực tế của màng A, B và màng C trong không gian
+            const centerYA = state.cylY + CONFIG.sideHoleLocalY;
+            const bottomEdgeYA = centerYA - CONFIG.holeRadius; // Mép dưới của màng A, B
+            const worldYC = state.cylY + CONFIG.bottomHoleLocalY;
+
+            // Tính độ sâu hiệu dụng của màng A và B ngay từ khi mép dưới chạm mặt nước
+            let depthUnitA = 0;
+            if (CONFIG.waterSurfaceY > bottomEdgeYA) {
+                if (CONFIG.waterSurfaceY <= centerYA) {
+                    // Khi màng A, B đang ngập một phần (mép dưới đã vào nước)
+                    const submergedPart = CONFIG.waterSurfaceY - bottomEdgeYA;
+                    depthUnitA = submergedPart * 0.5;
+                } else {
+                    // Khi tâm màng A, B đã ngập dưới mặt thoáng
+                    depthUnitA = (CONFIG.waterSurfaceY - centerYA) + CONFIG.holeRadius * 0.35;
+                }
+            }
+            const depthUnitB = depthUnitA; // A và B cùng độ sâu hoàn toàn
+            const depthUnitC = Math.max(0, CONFIG.waterSurfaceY - worldYC);
+
+            // Độ biến dạng (ép cong vào trong bình) tỉ lệ thuận với độ sâu
+            const maxBulgeSide = 0.65;
+            const maxBulgeBottom = 0.94;
+
+            const bulgeA = (depthUnitA / CONFIG.maxDepthUnit) * maxBulgeSide;
+            const bulgeB = (depthUnitB / CONFIG.maxDepthUnit) * maxBulgeSide;
+            const bulgeC = (depthUnitC / CONFIG.maxDepthUnit) * maxBulgeBottom;
+
+            // Cập nhật lưới 3D của 3 màng cao su
+            updateMembraneMesh(geoA, profileLineA, 'A', bulgeA);
+            updateMembraneMesh(geoB, profileLineB, 'B', bulgeB);
+            updateMembraneMesh(geoC, profileLineC, 'C', bulgeC);
+
+            // Cập nhật mũi tên biểu diễn áp suất
+            updateArrowCluster(arrowClusterA, 'A', depthUnitA, bulgeA);
+            updateArrowCluster(arrowClusterB, 'B', depthUnitB, bulgeB);
+            updateArrowCluster(arrowClusterC, 'C', depthUnitC, bulgeC);
+
+            // Quy đổi ra đơn vị thực tế (cm, Pa, mm)
+            const hA_cm = depthUnitA * CONFIG.cmPerUnit;
+            const hB_cm = depthUnitB * CONFIG.cmPerUnit;
+            const hC_cm = depthUnitC * CONFIG.cmPerUnit;
+
+            const pA_Pa = Math.round((hA_cm / 100) * CONFIG.waterSpecificWeight);
+            const pB_Pa = Math.round((hB_cm / 100) * CONFIG.waterSpecificWeight);
+            const pC_Pa = Math.round((hC_cm / 100) * CONFIG.waterSpecificWeight);
+
+            const deformA_mm = (bulgeA * 14).toFixed(1);
+            const deformB_mm = (bulgeB * 14).toFixed(1);
+            const deformC_mm = (bulgeC * 14).toFixed(1);
+
+            // Cập nhật giao diện bên phải
+            updateDashboardUI(hA_cm, hB_cm, hC_cm, pA_Pa, pB_Pa, pC_Pa, deformA_mm, deformB_mm, deformC_mm);
+            // Cập nhật hộp thông tin nếu đang chọn 1 màng
+            updateSelectedMembraneInfo(hA_cm, hB_cm, hC_cm, pA_Pa, pB_Pa, pC_Pa, deformA_mm, deformB_mm, deformC_mm);
+            // Cập nhật mặt cắt 2D trong cửa sổ So sánh A-B-C
+            updateCrossSectionSVG(hA_cm, hC_cm, bulgeA, bulgeC);
+        }
+
+        // =========================================================================
+        // 8. CẬP NHẬT GIAO DIỆN SỐ LIỆU & HÌNH CẮT SO SÁNH 2D
+        // =========================================================================
+        function updateDashboardUI(hA, hB, hC, pA, pB, pC, defA, defB, defC) {
+            const slider = document.getElementById('depth-slider');
+            slider.value = state.immersionProgress;
+
+            const badge = document.getElementById('slider-val-badge');
+            const btnText = document.getElementById('btn-immerse-text');
+            if (state.immersionProgress <= 1) {
+                badge.textContent = "Ngoài cốc nước";
+                btnText.textContent = "NHÚNG BÌNH VÀO NƯỚC";
+            } else if (state.immersionProgress < 35) {
+                badge.textContent = `Đang nhúng (${Math.round(state.immersionProgress)}%)`;
+                btnText.textContent = "NHÚNG SÂU HƠN NỮA";
+            } else if (state.immersionProgress < 80) {
+                badge.textContent = `Nhúng nông (${Math.round(state.immersionProgress)}%)`;
+                btnText.textContent = "NHÚNG SÂU TỐI ĐA";
+            } else {
+                badge.textContent = `Nhúng sâu (${Math.round(state.immersionProgress)}%)`;
+                btnText.textContent = "ĐƯA BÌNH LÊN NGOÀI NƯỚC";
+            }
+
+            // Màng A
+            document.getElementById('depth-A').textContent = `hA = ${hA.toFixed(1)} cm`;
+            document.getElementById('press-A').textContent = `${pA} Pa`;
+            document.getElementById('bar-A').style.width = `${Math.min(100, (hA / 22) * 100)}%`;
+            document.getElementById('status-A').textContent = hA > 0.1
+                ? `Lõm vào trong (${defA} mm)`
+                : 'Phẳng (Chưa biến dạng)';
+
+            // Màng B
+            document.getElementById('depth-B').textContent = `hB = ${hB.toFixed(1)} cm`;
+            document.getElementById('press-B').textContent = `${pB} Pa`;
+            document.getElementById('bar-B').style.width = `${Math.min(100, (hB / 22) * 100)}%`;
+            document.getElementById('status-B').textContent = hB > 0.1
+                ? `Lõm vào trong (${defB} mm)`
+                : 'Phẳng (Chưa biến dạng)';
+
+            // Màng C
+            document.getElementById('depth-C').textContent = `hC = ${hC.toFixed(1)} cm`;
+            document.getElementById('press-C').textContent = `${pC} Pa`;
+            document.getElementById('bar-C').style.width = `${Math.min(100, (hC / 22) * 100)}%`;
+            document.getElementById('status-C').textContent = hC > 0.1
+                ? `Lõm mạnh vào trong (${defC} mm)`
+                : 'Phẳng (Chưa biến dạng)';
+        }
+
+        function updateSelectedMembraneInfo(hA, hB, hC, pA, pB, pC, defA, defB, defC) {
+            if (!state.selectedMembrane) return;
+            const titleEl = document.getElementById('info-title');
+            const descEl = document.getElementById('info-desc');
+            const depthEl = document.getElementById('info-depth');
+            const deformEl = document.getElementById('info-deform');
+            const badgeEl = document.getElementById('info-badge');
+
+            if (state.selectedMembrane === 'A') {
+                badgeEl.textContent = 'A';
+                badgeEl.className = "w-7 h-7 rounded-full bg-[#c81e1e] text-white font-bold text-sm flex items-center justify-center shrink-0";
+                titleEl.textContent = "Màng A: Nước tác dụng áp suất lên thành bên trái của bình";
+                descEl.innerHTML = hA > 0.1
+                    ? `Nước bên ngoài ép vuông góc từ <b>trái sang phải</b> vào màng A làm màng bị đẩy cong vào lòng bình. Độ biến dạng của A <b>bằng với màng B</b> vì cùng ở độ sâu <b>${hA.toFixed(1)} cm</b>.`
+                    : `Màng A đang nằm ngoài nước nên chưa chịu áp suất của nước (trạng thái phẳng). Hãy nhúng bình xuống nước để quan sát.`;
+                depthEl.textContent = `${hA.toFixed(1)} cm (${pA} Pa)`;
+                deformEl.textContent = `${defA} mm`;
+            } else if (state.selectedMembrane === 'B') {
+                badgeEl.textContent = 'B';
+                badgeEl.className = "w-7 h-7 rounded-full bg-[#c81e1e] text-white font-bold text-sm flex items-center justify-center shrink-0";
+                titleEl.textContent = "Màng B: Nước tác dụng áp suất lên thành bên phải của bình";
+                descEl.innerHTML = hB > 0.1
+                    ? `Nước bên ngoài ép vuông góc từ <b>phải sang trái</b> vào màng B làm màng bị đẩy cong vào lòng bình. Độ biến dạng của B <b>tương đương màng A</b> vì cùng độ sâu <b>${hB.toFixed(1)} cm</b>.`
+                    : `Màng B đang nằm ngoài nước nên ở trạng thái phẳng. Hãy nhúng bình xuống nước để quan sát.`;
+                depthEl.textContent = `${hB.toFixed(1)} cm (${pB} Pa)`;
+                deformEl.textContent = `${defB} mm`;
+            } else if (state.selectedMembrane === 'C') {
+                badgeEl.textContent = 'C';
+                badgeEl.className = "w-7 h-7 rounded-full bg-amber-600 text-white font-bold text-sm flex items-center justify-center shrink-0";
+                titleEl.textContent = "Màng C: Nước tác dụng áp suất lên đáy bình (từ dưới lên)";
+                descEl.innerHTML = hC > 0.1
+                    ? `Nước ép từ <b>dưới hướng thẳng đứng lên trên</b> vào đáy bình. Vì màng C nằm ở độ sâu lớn hơn (<b>${hC.toFixed(1)} cm</b>) nên chịu áp suất lớn hơn và <b>bị ép cong vào trong rõ rệt hơn A và B</b>.`
+                    : `Màng C ở đáy bình chưa tiếp xúc với nước (trạng thái phẳng). Hãy nhúng bình vào nước để quan sát.`;
+                depthEl.textContent = `${hC.toFixed(1)} cm (${pC} Pa)`;
+                deformEl.textContent = `${defC} mm`;
+            }
+        }
+
+        function updateCrossSectionSVG(hA, hC, bulgeA, bulgeC) {
+            const pathA = document.getElementById('svg-path-A');
+            const pathB = document.getElementById('svg-path-B');
+            const pathC = document.getElementById('svg-path-C');
+
+            const curveOffsetAB = bulgeA * 38;
+            const curveOffsetC = bulgeC * 42;
+
+            pathA.setAttribute('d', `M 75 60 Q ${75 + curveOffsetAB} 77.5 75 95`);
+            pathB.setAttribute('d', `M 165 60 Q ${165 - curveOffsetAB} 77.5 165 95`);
+            pathC.setAttribute('d', `M 95 135 Q 120 ${135 - curveOffsetC} 145 135`);
+
+            const waterLineY = Math.max(15, Math.min(155, 135 - (hC / 22) * 115));
+            const svgWaterBg = document.getElementById('svg-water-bg');
+            const svgWaterLine = document.getElementById('svg-water-line');
+            svgWaterBg.setAttribute('y', waterLineY);
+            svgWaterBg.setAttribute('height', Math.max(0, 165 - waterLineY));
+            svgWaterLine.setAttribute('y1', waterLineY);
+            svgWaterLine.setAttribute('y2', waterLineY);
+
+            const svgArrows = document.getElementById('svg-arrows');
+            svgArrows.setAttribute('opacity', hC > 0.2 ? '1' : '0');
+
+            const abText = document.getElementById('comp-ab-text');
+            const cText = document.getElementById('comp-c-text');
+            const summary = document.getElementById('comp-summary');
+
+            if (hC <= 0.1) {
+                abText.textContent = "Chưa ngập nước (Phẳng)";
+                cText.textContent = "Chưa ngập nước (Phẳng)";
+                summary.textContent = "Bình đang ở ngoài không khí, cả 3 màng đều phẳng.";
+            } else if (hA <= 0.1 && hC > 0.1) {
+                abText.textContent = "Chưa chạm mặt nước (Phẳng)";
+                cText.textContent = `Đã ngập (hC = ${hC.toFixed(1)} cm) - Lõm lên`;
+                summary.textContent = "Màng C chạm nước trước và bắt đầu bị nước ép cong lên trên.";
+            } else {
+                abText.textContent = `Biến dạng bằng nhau (h = ${hA.toFixed(1)} cm)`;
+                cText.textContent = `Biến dạng LỚN HƠN (h = ${hC.toFixed(1)} cm)`;
+                summary.innerHTML = `<span class="text-[#b91c1c]">Kết quả:</span> Độ lõm <b>A = B &lt; C</b> vì màng C ở sâu hơn màng A và B.`;
+            }
+        }
+
+        // =========================================================================
+        // 9. ĐỒNG BỘ VỊ TRÍ NHÃN 3D A, B, C TRÊN MÀN HÌNH
+        // =========================================================================
+        const labelA = document.getElementById('label-A');
+        const labelB = document.getElementById('label-B');
+        const labelC = document.getElementById('label-C');
+        const labelWater = document.getElementById('label-water');
+
+        function project3DToScreen(vec3) {
+            const v = vec3.clone().project(camera);
+            const x = (v.x * 0.5 + 0.5) * container.clientWidth;
+            const y = (-v.y * 0.5 + 0.5) * container.clientHeight;
+            return { x, y };
+        }
+
+        function updateFloatingLabels() {
+            const posA = new THREE.Vector3(-CONFIG.cylRadius - 0.55, state.cylY + CONFIG.sideHoleLocalY, 0.35);
+            const posB = new THREE.Vector3(CONFIG.cylRadius + 0.55, state.cylY + CONFIG.sideHoleLocalY, 0.35);
+            const posC = new THREE.Vector3(0, state.cylY + CONFIG.bottomHoleLocalY - 0.55, 0.65);
+            const posW = new THREE.Vector3(-CONFIG.beakerRadius - 0.15, CONFIG.waterSurfaceY, 0);
+
+            const scrA = project3DToScreen(posA);
+            const scrB = project3DToScreen(posB);
+            const scrC = project3DToScreen(posC);
+            const scrW = project3DToScreen(posW);
+
+            labelA.style.left = `${scrA.x}px`;
+            labelA.style.top = `${scrA.y}px`;
+
+            labelB.style.left = `${scrB.x}px`;
+            labelB.style.top = `${scrB.y}px`;
+
+            labelC.style.left = `${scrC.x}px`;
+            labelC.style.top = `${scrC.y}px`;
+
+            labelWater.style.left = `${scrW.x}px`;
+            labelWater.style.top = `${scrW.y}px`;
+        }
+
+        // =========================================================================
+        // 10. TƯƠNG TÁC KÉO BÌNH TRỤ TRỰC TIẾP TRONG KHÔNG GIAN 3D & CLICK MÀNG
+        // =========================================================================
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        let dragStartPointerY = 0;
+        let dragStartProgress = 0;
+
+        function getNormalizedPointer(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+            pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+            return clientY;
+        }
+
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            const clientY = getNormalizedPointer(e);
+            raycaster.setFromCamera(pointer, camera);
+
+            const membraneHits = raycaster.intersectObjects([meshA, meshB, meshC]);
+            if (membraneHits.length > 0) {
+                const hitObj = membraneHits[0].object;
+                if (hitObj === meshA) selectMembrane('A');
+                else if (hitObj === meshB) selectMembrane('B');
+                else if (hitObj === meshC) selectMembrane('C');
+                return;
+            }
+
+            const cylHits = raycaster.intersectObjects([cylBodyMesh, topCapMesh, handleRodMesh, handleKnobMesh]);
+            if (cylHits.length > 0) {
+                state.isDraggingCylinder = true;
+                state.isAnimating = false;
+                controls.enabled = false;
+                dragStartPointerY = clientY;
+                dragStartProgress = state.immersionProgress;
+                renderer.domElement.style.cursor = 'ns-resize';
+            }
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!state.isDraggingCylinder) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                    getNormalizedPointer(e);
+                    raycaster.setFromCamera(pointer, camera);
+                    const hits = raycaster.intersectObjects([meshA, meshB, meshC, cylBodyMesh, topCapMesh, handleRodMesh, handleKnobMesh]);
+                    renderer.domElement.style.cursor = hits.length > 0 ? 'pointer' : 'grab';
+                }
+                return;
+            }
+
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const deltaY = clientY - dragStartPointerY;
+            const deltaProgress = (deltaY / (container.clientHeight * 0.42)) * 100;
+            state.immersionProgress = Math.max(0, Math.min(100, dragStartProgress + deltaProgress));
+            state.targetProgress = state.immersionProgress;
+            updateSimulationPhysics();
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (state.isDraggingCylinder) {
+                state.isDraggingCylinder = false;
+                controls.enabled = true;
+                renderer.domElement.style.cursor = 'grab';
+            }
+        });
+
+        // =========================================================================
+        // 11. SỰ KIỆN NÚT BẤM ĐIỀU KHIỂN & CÂU HỎI CHỐT KIẾN THỨC
+        // =========================================================================
+        function selectMembrane(id) {
+            state.selectedMembrane = id;
+            document.getElementById('membrane-info-box').classList.remove('hidden');
+            highlightSelectedMembrane();
+            updateSimulationPhysics();
+        }
+
+        function highlightSelectedMembrane() {
+            ['A', 'B', 'C'].forEach(m => {
+                const lbl = document.getElementById(`label-${m}`);
+                const card = document.getElementById(`card-${m}`);
+                if (state.selectedMembrane === m) {
+                    lbl.classList.add('active-membrane');
+                    card.classList.add('ring-2', 'ring-[#b91c1c]', 'bg-red-50/60');
+                } else {
+                    lbl.classList.remove('active-membrane');
+                    card.classList.remove('ring-2', 'ring-[#b91c1c]', 'bg-red-50/60');
+                }
+            });
+        }
+
+        labelA.addEventListener('click', () => selectMembrane('A'));
+        labelB.addEventListener('click', () => selectMembrane('B'));
+        labelC.addEventListener('click', () => selectMembrane('C'));
+
+        document.getElementById('card-A').addEventListener('click', () => selectMembrane('A'));
+        document.getElementById('card-B').addEventListener('click', () => selectMembrane('B'));
+        document.getElementById('card-C').addEventListener('click', () => selectMembrane('C'));
+
+        document.getElementById('btn-close-info').addEventListener('click', () => {
+            state.selectedMembrane = null;
+            highlightSelectedMembrane();
+            document.getElementById('membrane-info-box').classList.add('hidden');
+        });
+
+        function setImmersionTarget(targetVal, animate = true) {
+            state.targetProgress = Math.max(0, Math.min(100, targetVal));
+            if (animate) {
+                state.isAnimating = true;
+            } else {
+                state.isAnimating = false;
+                state.immersionProgress = state.targetProgress;
+                updateSimulationPhysics();
+            }
+        }
+
+        // Nút chính "NHÚNG BÌNH VÀO NƯỚC"
+        document.getElementById('btn-immerse').addEventListener('click', () => {
+            if (state.immersionProgress < 80) {
+                setImmersionTarget(88, true);
+            } else {
+                setImmersionTarget(0, true);
+            }
+        });
+
+        // Thanh trượt độ sâu
+        document.getElementById('depth-slider').addEventListener('input', (e) => {
+            setImmersionTarget(parseFloat(e.target.value), false);
+        });
+
+        // Các nút mức độ sâu nhanh
+        document.getElementById('btn-depth-out').addEventListener('click', () => setImmersionTarget(0, true));
+        document.getElementById('btn-depth-shallow').addEventListener('click', () => setImmersionTarget(55, true));
+        document.getElementById('btn-depth-deep').addEventListener('click', () => setImmersionTarget(96, true));
+
+        // Nút Quan sát áp suất (Mũi tên lực ép)
+        const btnToggleVectors = document.getElementById('btn-toggle-vectors');
+        const badgeVectors = document.getElementById('badge-vectors');
+        btnToggleVectors.addEventListener('click', () => {
+            state.showVectors = !state.showVectors;
+            vectorsGroup.visible = state.showVectors;
+            if (state.showVectors) {
+                badgeVectors.textContent = "Đang bật";
+                badgeVectors.className = "text-xs px-2 py-0.5 rounded bg-[#b91c1c] text-white font-bold";
+                btnToggleVectors.classList.add('border-[#b91c1c]', 'bg-red-50');
+                if (state.immersionProgress < 35) setImmersionTarget(82, true);
+            } else {
+                badgeVectors.textContent = "Đang tắt";
+                badgeVectors.className = "text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold";
+                btnToggleVectors.classList.remove('border-[#b91c1c]', 'bg-red-50');
+            }
+        });
+
+        // Nút So sánh A - B - C
+        const btnToggleCompare = document.getElementById('btn-toggle-compare');
+        const badgeCompare = document.getElementById('badge-compare');
+        const compareModal = document.getElementById('compare-modal');
+
+        function toggleCompareModal(forceState) {
+            state.showCompare = forceState !== undefined ? forceState : !state.showCompare;
+            compareModal.classList.toggle('hidden', !state.showCompare);
+            if (state.showCompare) {
+                badgeCompare.textContent = "Đang bật";
+                badgeCompare.className = "text-xs px-2 py-0.5 rounded bg-[#b91c1c] text-white font-bold";
+                btnToggleCompare.classList.add('border-[#b91c1c]', 'bg-red-50');
+                if (state.immersionProgress < 35) setImmersionTarget(85, true);
+            } else {
+                badgeCompare.textContent = "Đang tắt";
+                badgeCompare.className = "text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold";
+                btnToggleCompare.classList.remove('border-[#b91c1c]', 'bg-red-50');
+            }
+        }
+        btnToggleCompare.addEventListener('click', () => toggleCompareModal());
+        document.getElementById('btn-close-compare').addEventListener('click', () => toggleCompareModal(false));
+
+        // Nút Đặt lại
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            setImmersionTarget(0, true);
+            state.showVectors = true;
+            vectorsGroup.visible = true;
+            badgeVectors.textContent = "Đang bật";
+            badgeVectors.className = "text-xs px-2 py-0.5 rounded bg-[#b91c1c] text-white font-bold";
+            btnToggleVectors.classList.add('border-[#b91c1c]', 'bg-red-50');
+            toggleCompareModal(false);
+            state.selectedMembrane = null;
+            highlightSelectedMembrane();
+            resetCameraView();
+        });
+
+        // Nút Đặt lại góc nhìn chuẩn 3/4
+        function resetCameraView() {
+            camera.position.set(0, 2.6, 13.8);
+            controls.target.set(0, 0.2, 0);
+            controls.update();
+        }
+        document.getElementById('btn-reset-cam').addEventListener('click', resetCameraView);
+
+        // Modal Hướng dẫn
+        const guideModal = document.getElementById('guide-modal');
+        document.getElementById('btn-guide').addEventListener('click', () => guideModal.classList.remove('hidden'));
+        document.getElementById('btn-close-guide').addEventListener('click', () => guideModal.classList.add('hidden'));
+        document.getElementById('btn-ok-guide').addEventListener('click', () => guideModal.classList.add('hidden'));
+
+        // Modal Câu hỏi & Chốt kiến thức
+        const quizModal = document.getElementById('quiz-modal');
+        document.getElementById('btn-quiz').addEventListener('click', () => quizModal.classList.remove('hidden'));
+        document.getElementById('btn-close-quiz').addEventListener('click', () => quizModal.classList.add('hidden'));
+
+        document.getElementById('btn-submit-quiz').addEventListener('click', () => {
+            const q1Val = document.querySelector('input[name="q1"]:checked')?.value;
+            const q2Val = document.querySelector('input[name="q2"]:checked')?.value;
+
+            const fb1 = document.getElementById('q1-feedback');
+            const fb2 = document.getElementById('q2-feedback');
+
+            fb1.classList.remove('hidden');
+            if (q1Val === 'correct') {
+                fb1.className = "mt-2 text-xs sm:text-sm font-bold px-3 py-2 rounded bg-emerald-100 text-emerald-800 border border-emerald-400";
+                fb1.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i> Chính xác! Cả 3 màng A, B và C đều bị ép cong vào trong lòng bình, chứng tỏ nước gây áp suất theo mọi phương.`;
+            } else {
+                fb1.className = "mt-2 text-xs sm:text-sm font-bold px-3 py-2 rounded bg-red-100 text-[#b91c1c] border border-red-300";
+                fb1.innerHTML = `<i class="fa-solid fa-circle-info mr-1"></i> Đáp án đúng: Khi nhúng bình vào nước, cả 3 màng A, B và C đều bị nước ép cong vào phía trong bình, chứng tỏ chất lỏng gây áp suất theo mọi phương.`;
+            }
+
+            fb2.classList.remove('hidden');
+            if (q2Val === 'correct') {
+                fb2.className = "mt-2 text-xs sm:text-sm font-bold px-3 py-2 rounded bg-emerald-100 text-emerald-800 border border-emerald-400";
+                fb2.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i> Chính xác! Màng A và B ở cùng độ sâu nên chịu áp suất bằng nhau; màng C ở sâu hơn nên chịu áp suất lớn hơn.`;
+            } else {
+                fb2.className = "mt-2 text-xs sm:text-sm font-bold px-3 py-2 rounded bg-red-100 text-[#b91c1c] border border-red-300";
+                fb2.innerHTML = `<i class="fa-solid fa-circle-info mr-1"></i> Đáp án đúng: Màng A và B ở cùng độ sâu (hA = hB) nên biến dạng như nhau; màng C nằm sâu hơn (hC > hA) nên chịu áp suất lớn hơn và biến dạng nhiều hơn.`;
+            }
+
+            const conclusionBox = document.getElementById('conclusion-box');
+            conclusionBox.classList.remove('hidden');
+            conclusionBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+
+        // =========================================================================
+        // 12. VÒNG LẶP HOẠT HỌA (ANIMATION LOOP) & RESIZE
+        // =========================================================================
+        const clock = new THREE.Clock();
+
+        function animateWaterSurface(elapsedTime) {
+            const pos = waveSurfaceGeo.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const bx = waveSurfaceBasePos.getX(i);
+                const bz = waveSurfaceBasePos.getZ(i);
+                const dist = Math.sqrt(bx * bx + bz * bz);
+                const wave = Math.sin(dist * 3.5 - elapsedTime * 2.8) * 0.018 + Math.cos(bx * 2.2 + elapsedTime * 2.0) * 0.01;
+                pos.setY(i, wave);
+            }
+            pos.needsUpdate = true;
+        }
+
+        function animateLoop() {
+            requestAnimationFrame(animateLoop);
+            const elapsed = clock.getElapsedTime();
+
+            if (state.isAnimating) {
+                const diff = state.targetProgress - state.immersionProgress;
+                if (Math.abs(diff) < 0.15) {
+                    state.immersionProgress = state.targetProgress;
+                    state.isAnimating = false;
+                } else {
+                    const step = Math.sign(diff) * Math.max(0.25, Math.min(1.15, Math.abs(diff) * 0.045));
+                    state.immersionProgress += step;
+                }
+                updateSimulationPhysics();
+            }
+
+            animateWaterSurface(elapsed);
+            controls.update();
+            renderer.render(scene, camera);
+            updateFloatingLabels();
+        }
+
+        window.addEventListener('resize', () => {
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            updateFloatingLabels();
+        });
+
+        window.onload = function () {
+            updateSimulationPhysics();
+            animateLoop();
+        };
+    </script>
+</body>
+</html>
